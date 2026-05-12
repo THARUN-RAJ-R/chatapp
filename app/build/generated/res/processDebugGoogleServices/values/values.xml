@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <string name="gcm_defaultSenderId" translatable="false">387356029706</string>
-    <string name="google_api_key" translatable="false">AIzaSyDi-QLDyjOaxpO5mvl8plrWwKyiUS63QqE</string>
-    <string name="google_app_id" translatable="false">1:387356029706:android:a7622dcf2d6d0272ad80f3</string>
-    <string name="google_crash_reporting_api_key" translatable="false">AIzaSyDi-QLDyjOaxpO5mvl8plrWwKyiUS63QqE</string>
-    <string name="google_storage_bucket" translatable="false">chatapp-5dedf.firebasestorage.app</string>
-    <string name="project_id" translatable="false">chatapp-5dedf</string>
-</resources>
