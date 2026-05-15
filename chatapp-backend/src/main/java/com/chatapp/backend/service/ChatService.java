@@ -191,15 +191,16 @@ public class ChatService {
         }).collect(java.util.stream.Collectors.toList());
     }
 
-    // ─── Get Message History (paginated) ─────────────────────────────────────
+    // ─── Get Message History (paginated, optional afterSeq for WhatsApp-style sync) ──
 
     @Transactional(readOnly = true)
-    public Page<MessagePayload> getMessages(UUID chatId, int page, int size) {
+    public Page<MessagePayload> getMessages(UUID chatId, int page, int size, Long afterSeq) {
         Chat chat = chatRepository.findById(chatId)
             .orElseThrow(() -> new RuntimeException("Chat not found"));
-        return messageRepository.findByChatIdOrderByCreatedAtDesc(
-            chatId, PageRequest.of(page, size)
-        ).map(msg -> toPayload(msg, chat));
+        Page<Message> messages = (afterSeq != null)
+            ? messageRepository.findAfterSeq(chatId, afterSeq, PageRequest.of(page, size))
+            : messageRepository.findByChatIdOrderByCreatedAtDesc(chatId, PageRequest.of(page, size));
+        return messages.map(msg -> toPayload(msg, chat));
     }
 
     // ─── Mark Messages as Read ───────────────────────────────────────────────
@@ -227,6 +228,7 @@ public class ChatService {
                 .mediaUrl(message.getMediaUrl())
                 .status(message.getStatus().name())
                 .timestamp(message.getCreatedAt())
+                .seqNumber(message.getSeqNumber())
                 .isGroup(chat.getType() == Chat.ChatType.GROUP)
                 .groupName(chat.getGroupName())
                 .build();

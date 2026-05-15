@@ -15,7 +15,8 @@ interface ChatApi {
     suspend fun getMessages(
         @Path("chatId") chatId: String,
         @Query("page") page: Int = 0,
-        @Query("size") size: Int = 30
+        @Query("size") size: Int = 30,
+        @Query("afterSeq") afterSeq: Long? = null
     ): Response<ApiResponse<Map<String, Any>>>
 
     @POST("api/groups")

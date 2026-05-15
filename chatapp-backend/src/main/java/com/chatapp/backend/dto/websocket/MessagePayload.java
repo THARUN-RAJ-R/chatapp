@@ -23,6 +23,7 @@ public class MessagePayload {
     private String mediaUrl;
     private String status;     // SENT, DELIVERED, READ
     private LocalDateTime timestamp;
+    private Long seqNumber;    // WhatsApp-style sequence number for perfect ordering
     private boolean isGroup;
     private String groupName;
 }

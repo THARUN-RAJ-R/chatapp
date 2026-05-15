@@ -138,9 +138,18 @@ class ChatViewModel @Inject constructor(
                                 mediaUrl   = payload.mediaUrl,
                                 status     = payload.status,
                                 timestamp  = System.currentTimeMillis(),
-                                isMine     = payload.senderId == tokenManager.userId
+                                isMine     = payload.senderId == tokenManager.userId,
+                                seqNumber  = payload.seqNumber
                             )
                             messageDao.upsert(entity)
+
+                            // Update last_seq in prefs so background sync knows we already got this
+                            val prefs = getApplication<android.app.Application>()
+                                .getSharedPreferences("sync_prefs", android.content.Context.MODE_PRIVATE)
+                            val currentSeq = prefs.getLong("last_seq_$chatId", 0L)
+                            if (payload.seqNumber > currentSeq) {
+                                prefs.edit().putLong("last_seq_$chatId", payload.seqNumber).apply()
+                            }
 
                             // Update chat list with last message
                             chatDao.getById(chatId)?.let { chat ->

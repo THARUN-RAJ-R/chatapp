@@ -71,6 +71,7 @@ data class WsMessagePayload(
     val mediaUrl: String?,
     val status: String,
     val timestamp: String,
+    val seqNumber: Long = 0L,
     val isGroup: Boolean,
     val groupName: String?
 )

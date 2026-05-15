@@ -14,5 +14,6 @@ data class MessageEntity(
     val mediaUrl: String?,
     val status: String,      // SENT, DELIVERED, READ
     val timestamp: Long,
-    val isMine: Boolean      // true if current user sent this
+    val isMine: Boolean,     // true if current user sent this
+    val seqNumber: Long = 0L // WhatsApp-style sequence number for perfect ordering
 )

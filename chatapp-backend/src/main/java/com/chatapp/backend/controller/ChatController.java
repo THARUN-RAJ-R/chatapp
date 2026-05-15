@@ -52,13 +52,14 @@ public class ChatController {
         return ResponseEntity.ok(ApiResponse.ok(chat));
     }
 
-    /** Get paginated message history */
+    /** Get paginated message history. Pass afterSeq for WhatsApp-style incremental sync. */
     @GetMapping("/chats/{chatId}/messages")
     public ResponseEntity<ApiResponse<?>> getMessages(
             @PathVariable UUID chatId,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "30") int size) {
-        return ResponseEntity.ok(ApiResponse.ok(chatService.getMessages(chatId, page, size)));
+            @RequestParam(defaultValue = "30") int size,
+            @RequestParam(required = false) Long afterSeq) {
+        return ResponseEntity.ok(ApiResponse.ok(chatService.getMessages(chatId, page, size, afterSeq)));
     }
 
     /** Create a group */

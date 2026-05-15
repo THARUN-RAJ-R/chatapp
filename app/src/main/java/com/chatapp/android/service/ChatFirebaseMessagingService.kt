@@ -80,8 +80,9 @@ class ChatFirebaseMessagingService : FirebaseMessagingService() {
                 }
                 try {
                     runCatching {
-                        // Snapshot the DB count BEFORE sync to accurately measure new messages
-                        val countBefore = messageDao.getCountForChat(chatId)
+                        // WhatsApp-Style Sync: Only fetch messages newer than the last seqNumber we saw
+                        val prefs = getSharedPreferences("sync_prefs", android.content.Context.MODE_PRIVATE)
+                        val lastSeq = prefs.getLong("last_seq_$chatId", 0L)
 
                         val PAGE_SIZE = 200
                         var currentPage = 0
@@ -92,7 +93,7 @@ class ChatFirebaseMessagingService : FirebaseMessagingService() {
 
                         // ── Paginated sync loop ───────────────────────────
                         while (currentPage < totalPages) {
-                            val response = chatApi.getMessages(chatId, page = currentPage, size = PAGE_SIZE)
+                            val response = chatApi.getMessages(chatId, page = currentPage, size = PAGE_SIZE, afterSeq = if (lastSeq > 0) lastSeq else null)
                             if (!response.isSuccessful) break
 
                             val body = response.body()?.data ?: break
@@ -106,6 +107,9 @@ class ChatFirebaseMessagingService : FirebaseMessagingService() {
                                 val msgId     = m["messageId"] as? String ?: return@mapNotNull null
                                 val senderId  = m["senderId"]  as? String ?: return@mapNotNull null
                                 val chatIdStr = m["chatId"]    as? String ?: return@mapNotNull null
+                                val seqNumNum = m["seqNumber"] as? Number
+                                val seqNum    = seqNumNum?.toLong() ?: 0L
+                                
                                 MessageEntity(
                                     id         = msgId,
                                     chatId     = chatIdStr,
@@ -122,7 +126,8 @@ class ChatFirebaseMessagingService : FirebaseMessagingService() {
                                                 .toEpochMilli()
                                         }.getOrNull()
                                     } ?: System.currentTimeMillis(),
-                                    isMine = senderId == tokenManager.userId
+                                    isMine = senderId == tokenManager.userId,
+                                    seqNumber = seqNum
                                 )
                             }
 
@@ -143,9 +148,14 @@ class ChatFirebaseMessagingService : FirebaseMessagingService() {
 
                         if (allEntities.isEmpty()) return@runCatching
 
-                        // Accurate new count: how many rows were actually INSERTED (not updated) in Room
-                        val countAfter = messageDao.getCountForChat(chatId)
-                        val newCount = countAfter - countBefore
+                        // WhatsApp-style count: since we only fetched new messages, the total fetched is the exact new count
+                        val newCount = allEntities.size
+
+                        // Update the last seen seqNumber
+                        val maxSeqFetched = allEntities.maxOfOrNull { it.seqNumber } ?: lastSeq
+                        if (maxSeqFetched > lastSeq) {
+                            prefs.edit().putLong("last_seq_$chatId", maxSeqFetched).apply()
+                        }
 
                         Log.d(TAG, "Tickle sync COMPLETE: $newCount new messages (${allEntities.size} total) for chat $chatId")
 
