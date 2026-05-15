@@ -14,7 +14,8 @@ import java.util.UUID;
 @Repository
 public interface MessageRepository extends JpaRepository<Message, UUID> {
 
-    // Paginated message history (newest first)
+    // Paginated message history (newest first, stable sort using id as tiebreaker)
+    @Query("SELECT m FROM Message m WHERE m.chat.id = :chatId ORDER BY m.createdAt DESC, m.id DESC")
     Page<Message> findByChatIdOrderByCreatedAtDesc(UUID chatId, Pageable pageable);
 
     // Mark all unread messages in a chat as READ for a specific sender's messages

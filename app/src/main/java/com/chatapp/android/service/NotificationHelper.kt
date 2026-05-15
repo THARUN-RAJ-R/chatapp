@@ -68,4 +68,64 @@ object NotificationHelper {
             NotificationManagerCompat.from(context).notify(chatId.hashCode(), notification)
         }
     }
+    /**
+     * Show a BigTextStyle notification with up to 10 message lines.
+     * BigTextStyle is fully supported on Samsung One UI and all Android versions.
+     *
+     * Expanded view:
+     *   +910000000002
+     *   [SENDER_2] Msg 241
+     *   [SENDER_2] Msg 242
+     *   ...
+     *   [SENDER_2] Msg 250
+     *   +240 more messages
+     */
+    fun showInboxNotification(
+        context: Context,
+        chatId: String,
+        senderName: String,
+        lines: List<String>,    // up to 10 message texts, oldest → newest
+        totalCount: Int         // total new messages
+    ) {
+        val intent = Intent(context, MainActivity::class.java).apply {
+            action = Intent.ACTION_VIEW
+            data   = android.net.Uri.parse("chatapp://chat/$chatId")
+            flags  = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+        }
+        val pendingIntent = PendingIntent.getActivity(
+            context, chatId.hashCode(), intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        // Build the big text body: each message on its own line
+        val remaining = totalCount - lines.size
+        val bigText = buildString {
+            lines.forEach { appendLine(it) }
+            if (remaining > 0) append("+$remaining more messages")
+        }
+
+        // Collapsed single-line preview = last message text
+        val collapsedPreview = lines.lastOrNull()
+            ?: "$totalCount new messages"
+
+        val notification = NotificationCompat.Builder(context, CHANNEL_ID)
+            .setSmallIcon(android.R.drawable.ic_dialog_email)
+            .setContentTitle(senderName)
+            .setContentText(collapsedPreview)
+            .setStyle(
+                NotificationCompat.BigTextStyle()
+                    .bigText(bigText)
+                    .setBigContentTitle(senderName)
+                    .setSummaryText("$totalCount new messages")
+            )
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setAutoCancel(true)
+            .setContentIntent(pendingIntent)
+            .setNumber(totalCount)           // badge count on app icon
+            .build()
+
+        if (NotificationManagerCompat.from(context).areNotificationsEnabled()) {
+            NotificationManagerCompat.from(context).notify(chatId.hashCode(), notification)
+        }
+    }
 }

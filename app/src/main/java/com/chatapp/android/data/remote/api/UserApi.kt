@@ -17,8 +17,12 @@ interface UserApi {
         @Part avatar: MultipartBody.Part?
     ): Response<ApiResponse<UserDto>>
 
-    @POST("api/users/contacts/sync")
-    suspend fun syncContacts(@Body request: ContactSyncRequest): Response<ApiResponse<List<UserDto>>>
+    /**
+     * Look up a user by phone number.
+     * Returns 200 with UserDto if found, 404 if not registered.
+     */
+    @GET("api/users/by-phone")
+    suspend fun findByPhone(@Query("phone") phone: String): Response<ApiResponse<UserDto>>
 
     @PUT("api/users/fcm-token")
     suspend fun updateFcmToken(@Body request: FcmTokenRequest): Response<ApiResponse<Void>>

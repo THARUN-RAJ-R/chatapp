@@ -47,9 +47,6 @@ fun ChatScreen(
                         }
                         Column {
                             Text(uiState.chatName, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                            Text(if (uiState.isOtherOnline) "online" else "offline",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = if (uiState.isOtherOnline) OnlineGreen else OfflineGrey)
                         }
                     }
                 },
@@ -74,9 +71,6 @@ fun ChatScreen(
             contentPadding = PaddingValues(vertical = 8.dp)
         ) {
             items(messages, key = { it.id }) { message -> MessageBubble(message) }
-            if (uiState.isOtherTyping) {
-                item { TypingIndicator() }
-            }
         }
     }
 }
@@ -107,11 +101,6 @@ fun MessageBubble(message: MessageEntity) {
                 Text(message.content ?: "", style = MaterialTheme.typography.bodyMedium, color = TextPrimary)
                 Row(horizontalArrangement = Arrangement.End, modifier = Modifier.fillMaxWidth()) {
                     Text(formatTimestamp(message.timestamp), style = MaterialTheme.typography.labelSmall, color = TextTimestamp)
-                    if (isMine) {
-                        Spacer(Modifier.width(4.dp))
-                        val tickColor = if (message.status == "READ") TickRead else TickSent
-                        Text(if (message.status == "SENT") "✓" else "✓✓", style = MaterialTheme.typography.labelSmall, color = tickColor)
-                    }
                 }
             }
         }
@@ -160,7 +149,7 @@ fun MessageInput(text: String, onChanged: (String) -> Unit, onSend: () -> Unit, 
 }
 
 private fun formatTimestamp(millis: Long): String {
-    val h = (millis / 3600000 % 24).toInt()
-    val m = (millis / 60000 % 60).toInt()
-    return "%02d:%02d".format(h, m)
+    val date = java.util.Date(millis)
+    val fmt  = java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault())
+    return fmt.format(date)
 }

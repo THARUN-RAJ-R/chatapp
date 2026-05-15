@@ -1,16 +1,13 @@
 package com.chatapp.android.data.remote.api
 
-import com.chatapp.android.data.remote.dto.*
+import com.chatapp.android.data.remote.dto.ApiResponse
+import com.chatapp.android.data.remote.dto.LoginRequest
+import com.chatapp.android.data.remote.dto.UserDto
 import retrofit2.Response
-import retrofit2.http.*
+import retrofit2.http.Body
+import retrofit2.http.POST
 
 interface AuthApi {
-    @POST("api/auth/send-otp")
-    suspend fun sendOtp(@Body request: SendOtpRequest): Response<ApiResponse<Map<String, String>>>
-
-    @POST("api/auth/verify-otp")
-    suspend fun verifyOtp(@Body request: VerifyOtpRequest): Response<ApiResponse<AuthData>>
-
-    @POST("api/auth/refresh")
-    suspend fun refresh(@Body request: RefreshRequest): Response<ApiResponse<AuthData>>
+    @POST("api/auth/login")
+    suspend fun login(@Body request: LoginRequest): Response<ApiResponse<UserDto>>
 }

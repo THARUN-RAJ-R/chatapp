@@ -31,12 +31,12 @@ class StompWebSocketClient @Inject constructor(
         private set
 
     fun connect() {
-        val token = tokenManager.accessToken ?: return
+        val userId = tokenManager.userId ?: return
         val request = Request.Builder().url(BuildConfig.WS_BASE_URL).build()
         webSocket = okHttpClient.newWebSocket(request, object : WebSocketListener() {
             override fun onOpen(ws: WebSocket, response: Response) {
                 // Send STOMP CONNECT frame
-                ws.send(buildConnectFrame(token))
+                ws.send(buildConnectFrame(userId))
                 Log.d(TAG, "WebSocket opened, CONNECT sent")
             }
 
@@ -64,6 +64,10 @@ class StompWebSocketClient @Inject constructor(
     }
 
     fun subscribe(destination: String): String {
+        // Prevent duplicate subscriptions
+        val existingId = subscriptions.entries.find { it.value == destination }?.key
+        if (existingId != null) return existingId
+
         val id = UUID.randomUUID().toString()
         subscriptions[id] = destination
         webSocket?.send(buildSubscribeFrame(id, destination))
@@ -83,8 +87,8 @@ class StompWebSocketClient @Inject constructor(
     }
 
     // ─── Frame Builders ──────────────────────────────────────────────────
-    private fun buildConnectFrame(token: String) =
-        "CONNECT\naccept-version:1.2\nheart-beat:10000,10000\nAuthorization:Bearer $token\n\n\u0000"
+    private fun buildConnectFrame(userId: String) =
+        "CONNECT\naccept-version:1.2\nheart-beat:10000,10000\nX-User-Id:$userId\n\n\u0000"
 
     private fun buildSubscribeFrame(id: String, destination: String) =
         "SUBSCRIBE\nid:$id\ndestination:$destination\n\n\u0000"

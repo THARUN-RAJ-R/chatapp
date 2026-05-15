@@ -1,13 +1,10 @@
 package com.chatapp.android.data.remote.dto
 
 // ─── Auth ──────────────────────────────────────────────────────────────────
-data class SendOtpRequest(val phone: String)
-data class VerifyOtpRequest(val phone: String, val idToken: String)
-data class RefreshRequest(val refreshToken: String)
+data class LoginRequest(val phone: String)
 
 // ─── User ──────────────────────────────────────────────────────────────────
 data class FcmTokenRequest(val token: String)
-data class ContactSyncRequest(val phones: List<String>)
 
 // ─── Chat ──────────────────────────────────────────────────────────────────
 data class StartDirectChatRequest(val targetUserId: String)
@@ -28,13 +25,6 @@ data class ApiResponse<T>(
     val success: Boolean,
     val message: String,
     val data: T?
-)
-
-data class AuthData(
-    val accessToken: String,
-    val refreshToken: String,
-    val user: UserDto,
-    val isNewUser: Boolean
 )
 
 data class UserDto(

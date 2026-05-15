@@ -26,10 +26,11 @@ object NetworkModule {
     fun provideOkHttpClient(tokenManager: TokenManager): OkHttpClient {
         return OkHttpClient.Builder()
             .addInterceptor { chain ->
-                val token = tokenManager.accessToken
-                val request = if (token != null) {
+                // Send userId as X-User-Id header on every request
+                val userId = tokenManager.userId
+                val request = if (userId != null) {
                     chain.request().newBuilder()
-                        .addHeader("Authorization", "Bearer $token")
+                        .addHeader("X-User-Id", userId)
                         .build()
                 } else chain.request()
                 chain.proceed(request)

@@ -7,6 +7,9 @@ plugins {
     alias(libs.plugins.google.services)
 }
 
+kotlin {
+    jvmToolchain(17)
+}
 android {
     namespace  = "com.chatapp.android"
     compileSdk = 35
@@ -18,12 +21,9 @@ android {
         versionCode     = 1
         versionName     = "1.0"
 
-        // ── Device testing: PC WiFi IP (both phone and PC on same network)
-        buildConfigField("String", "BASE_URL",    "\"http://10.89.95.74:8080/\"")  // real device → PC
-        buildConfigField("String", "WS_BASE_URL", "\"ws://10.89.95.74:8080/ws\"")
-        // ── Emulator testing (uncomment if using AVD)
-        // buildConfigField("String", "BASE_URL",    "\"http://10.0.2.2:8080/\"")
-        // buildConfigField("String", "WS_BASE_URL", "\"ws://10.0.2.2:8080/ws\"")
+        // ── Device testing: USB Debugging with adb reverse
+        buildConfigField("String", "BASE_URL",    "\"https://chatapp-backend-1-shcw.onrender.com/\"")  
+        buildConfigField("String", "WS_BASE_URL", "\"wss://chatapp-backend-1-shcw.onrender.com/ws\"")
     }
 
     buildTypes {
@@ -36,12 +36,12 @@ android {
         }
     }
 
-    compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
-    }
     kotlinOptions {
-        jvmTarget = "11"
+        jvmTarget = "17"
+    }
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
     buildFeatures {
         compose     = true
@@ -87,16 +87,12 @@ dependencies {
     implementation(libs.coil.compose)
     implementation(libs.coil.okhttp)
 
-    // Firebase
+    // Firebase (keep messaging for push notifications; auth removed)
     implementation(platform(libs.firebase.bom))
-    implementation(libs.firebase.auth)
     implementation(libs.firebase.messaging)
 
-    // DataStore
+    // DataStore (session storage)
     implementation(libs.datastore.prefs)
-
-    // Encrypted Prefs (JWT token storage)
-    implementation(libs.encrypted.prefs)
 
     // Coroutines
     implementation(libs.coroutines.android)

@@ -1,6 +1,6 @@
 package com.chatapp.android.ui.screen.auth
 
-import androidx.compose.animation.*
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -11,19 +11,21 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.chatapp.android.ui.theme.*
+import com.chatapp.android.ui.theme.ChatGreen
 
 @Composable
 fun PhoneScreen(
-    onOtpSent: (String) -> Unit,
-    viewModel: PhoneViewModel = hiltViewModel()
+    onLoggedIn: () -> Unit,
+    viewModel: LoginViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
-    LaunchedEffect(uiState.navigateToOtp) {
-        uiState.navigateToOtp?.let { phone -> onOtpSent(phone); viewModel.onNavigated() }
+    LaunchedEffect(uiState.loggedIn) {
+        if (uiState.loggedIn) { onLoggedIn(); viewModel.onNavigated() }
     }
 
     Box(
@@ -39,9 +41,19 @@ fun PhoneScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
-            Text("💬", style = MaterialTheme.typography.headlineLarge.copy(fontSize = androidx.compose.ui.unit.TextUnit(56f, androidx.compose.ui.unit.TextUnitType.Sp)))
-            Text("Enter your phone number", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
-            Text("We'll send you a verification code", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text("💬", fontSize = 56.sp)
+
+            Text(
+                "Welcome",
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.Bold
+            )
+            Text(
+                "Enter your phone number to get started",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center
+            )
 
             OutlinedTextField(
                 value         = uiState.phone,
@@ -58,20 +70,40 @@ fun PhoneScreen(
                 )
             )
 
-            uiState.error?.let {
-                Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+            AnimatedVisibility(visible = uiState.error != null) {
+                uiState.error?.let {
+                    Text(
+                        it,
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall,
+                        textAlign = TextAlign.Center
+                    )
+                }
             }
 
             Button(
-                onClick  = viewModel::sendOtp,
+                onClick  = viewModel::login,
                 enabled  = !uiState.isLoading && uiState.phone.length >= 10,
                 modifier = Modifier.fillMaxWidth().height(52.dp),
                 shape    = RoundedCornerShape(14.dp),
                 colors   = ButtonDefaults.buttonColors(containerColor = ChatGreen)
             ) {
-                if (uiState.isLoading) CircularProgressIndicator(Modifier.size(20.dp), color = MaterialTheme.colorScheme.onPrimary, strokeWidth = 2.dp)
-                else Text("Continue", fontWeight = FontWeight.SemiBold)
+                if (uiState.isLoading)
+                    CircularProgressIndicator(
+                        Modifier.size(20.dp),
+                        color = MaterialTheme.colorScheme.onPrimary,
+                        strokeWidth = 2.dp
+                    )
+                else
+                    Text("Enter App", fontWeight = FontWeight.SemiBold)
             }
+
+            Text(
+                "No verification needed — just enter your number.",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center
+            )
         }
     }
 }

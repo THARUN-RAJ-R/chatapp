@@ -12,11 +12,14 @@ interface MessageDao {
     @Upsert
     suspend fun upsertAll(messages: List<MessageEntity>)
 
-    @Query("SELECT * FROM messages WHERE chatId = :chatId ORDER BY timestamp ASC")
+    @Query("SELECT * FROM messages WHERE chatId = :chatId ORDER BY timestamp ASC, id ASC")
     fun getMessagesForChat(chatId: String): Flow<List<MessageEntity>>
 
-    @Query("SELECT * FROM messages WHERE chatId = :chatId ORDER BY timestamp ASC LIMIT :limit OFFSET :offset")
+    @Query("SELECT * FROM messages WHERE chatId = :chatId ORDER BY timestamp ASC, id ASC LIMIT :limit OFFSET :offset")
     suspend fun getMessagesPaged(chatId: String, limit: Int, offset: Int): List<MessageEntity>
+
+    @Query("SELECT COUNT(*) FROM messages WHERE chatId = :chatId")
+    suspend fun getCountForChat(chatId: String): Int
 
     @Query("UPDATE messages SET status = 'READ' WHERE chatId = :chatId AND isMine = 0")
     suspend fun markAllRead(chatId: String)

@@ -7,9 +7,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import androidx.navigation.navDeepLink
-import com.chatapp.android.ui.screen.auth.OtpScreen
 import com.chatapp.android.ui.screen.auth.PhoneScreen
-import com.chatapp.android.ui.screen.auth.ProfileSetupScreen
 import com.chatapp.android.ui.screen.chat.ChatScreen
 import com.chatapp.android.ui.screen.group.CreateGroupScreen
 import com.chatapp.android.ui.screen.group.GroupInfoScreen
@@ -25,34 +23,14 @@ fun ChatNavGraph() {
 
         composable(Routes.SPLASH) {
             SplashScreen(
-                onNavigateToHome  = { navController.navigate(Routes.HOME) { popUpTo(Routes.SPLASH) { inclusive = true } } },
+                onNavigateToHome  = { navController.navigate(Routes.HOME)  { popUpTo(Routes.SPLASH) { inclusive = true } } },
                 onNavigateToPhone = { navController.navigate(Routes.PHONE) { popUpTo(Routes.SPLASH) { inclusive = true } } }
             )
         }
 
         composable(Routes.PHONE) {
-            PhoneScreen(onOtpSent = { phone -> navController.navigate(Routes.otp(phone)) })
-        }
-
-        composable(
-            route     = Routes.OTP,
-            arguments = listOf(navArgument("phone") { type = NavType.StringType })
-        ) { back ->
-            val phone = back.arguments?.getString("phone") ?: ""
-            OtpScreen(
-                phone         = phone,
-                onVerified    = { isNewUser ->
-                    if (isNewUser)
-                        navController.navigate(Routes.PROFILE_SETUP) { popUpTo(Routes.PHONE) { inclusive = true } }
-                    else
-                        navController.navigate(Routes.HOME) { popUpTo(Routes.PHONE) { inclusive = true } }
-                }
-            )
-        }
-
-        composable(Routes.PROFILE_SETUP) {
-            ProfileSetupScreen(onComplete = {
-                navController.navigate(Routes.HOME) { popUpTo(Routes.PROFILE_SETUP) { inclusive = true } }
+            PhoneScreen(onLoggedIn = {
+                navController.navigate(Routes.HOME) { popUpTo(Routes.PHONE) { inclusive = true } }
             })
         }
 
@@ -73,7 +51,6 @@ fun ChatNavGraph() {
         composable(
             route = Routes.CHAT,
             arguments = listOf(navArgument("chatId") { type = NavType.StringType }),
-            // Deep link from FCM notification: chatapp://chat/{chatId}
             deepLinks = listOf(navDeepLink { uriPattern = "chatapp://chat/{chatId}" })
         ) { back ->
             val chatId = back.arguments?.getString("chatId") ?: ""
