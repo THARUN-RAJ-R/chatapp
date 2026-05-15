@@ -1,6 +1,5 @@
 package com.chatapp.backend.config;
 
-import com.chatapp.backend.security.JwtUtil;
 import com.chatapp.backend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -13,13 +12,11 @@ import org.springframework.messaging.simp.stomp.StompCommand;
 import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
 import org.springframework.messaging.support.ChannelInterceptor;
 import org.springframework.messaging.support.MessageHeaderAccessor;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.web.socket.config.annotation.EnableWebSocketMessageBroker;
 import org.springframework.web.socket.config.annotation.StompEndpointRegistry;
 import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerConfigurer;
 
-import java.util.List;
+import java.security.Principal;
 import java.util.UUID;
 
 @Configuration
@@ -28,16 +25,12 @@ import java.util.UUID;
 @Slf4j
 public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
-    private final JwtUtil jwtUtil;
     private final UserRepository userRepository;
 
     @Override
     public void configureMessageBroker(MessageBrokerRegistry registry) {
-        // In-memory broker for /topic (group) and /queue (direct user)
         registry.enableSimpleBroker("/topic", "/queue");
-        // Prefix for @MessageMapping methods in controllers
         registry.setApplicationDestinationPrefixes("/app");
-        // Prefix for user-specific destinations
         registry.setUserDestinationPrefix("/user");
     }
 
@@ -45,7 +38,6 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     public void registerStompEndpoints(StompEndpointRegistry registry) {
         registry.addEndpoint("/ws")
                 .setAllowedOriginPatterns("*");
-                // SockJS fallback removed — Android uses native WebSocket
     }
 
     @Override
@@ -57,22 +49,16 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
                     MessageHeaderAccessor.getAccessor(message, StompHeaderAccessor.class);
 
                 if (accessor != null && StompCommand.CONNECT.equals(accessor.getCommand())) {
-                    // Extract JWT from STOMP CONNECT header
-                    String authHeader = accessor.getFirstNativeHeader("Authorization");
-                    if (authHeader != null && authHeader.startsWith("Bearer ")) {
-                        String token = authHeader.substring(7);
-                        if (jwtUtil.isTokenValid(token) && !jwtUtil.isRefreshToken(token)) {
-                            UUID userId = jwtUtil.extractUserId(token);
-                            userRepository.findById(userId).ifPresent(user -> {
-                                UsernamePasswordAuthenticationToken auth =
-                                    new UsernamePasswordAuthenticationToken(
-                                        user, null,
-                                        List.of(new SimpleGrantedAuthority("ROLE_USER"))
-                                    );
-                                accessor.setUser(auth);
-                                log.debug("WS authenticated: {}", user.getPhone());
-                            });
-                        }
+                    // Android sends userId in the STOMP CONNECT header "X-User-Id"
+                    String userId = accessor.getFirstNativeHeader("X-User-Id");
+                    if (userId != null && !userId.isBlank()) {
+                        userRepository.findById(UUID.fromString(userId)).ifPresent(user -> {
+                            // Create a simple Principal using the userId as the name
+                            // so Spring can route /user/{id}/queue messages
+                            Principal principal = () -> user.getId().toString();
+                            accessor.setUser(principal);
+                            log.debug("WS connected: {} ({})", user.getPhone(), user.getId());
+                        });
                     }
                 }
                 return message;

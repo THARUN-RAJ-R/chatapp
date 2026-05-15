@@ -23,7 +23,7 @@ public class PresenceService {
     private final SimpMessagingTemplate messagingTemplate;
 
     private static final String PRESENCE_KEY = "presence:";
-    private static final Duration PRESENCE_TTL = Duration.ofSeconds(90);
+    private static final Duration PRESENCE_TTL = Duration.ofSeconds(15);
 
     /** Called when user connects via WebSocket */
     public void setOnline(UUID userId) {

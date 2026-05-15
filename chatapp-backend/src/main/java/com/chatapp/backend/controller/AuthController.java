@@ -1,63 +1,47 @@
 package com.chatapp.backend.controller;
 
-import com.chatapp.backend.dto.request.SendOtpRequest;
-import com.chatapp.backend.dto.request.VerifyOtpRequest;
+import com.chatapp.backend.dto.request.LoginRequest;
 import com.chatapp.backend.dto.response.ApiResponse;
-import com.chatapp.backend.dto.response.AuthResponse;
-import com.chatapp.backend.service.AuthService;
+import com.chatapp.backend.dto.response.UserResponse;
+import com.chatapp.backend.model.User;
+import com.chatapp.backend.repository.UserRepository;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.Map;
-
+/**
+ * Simplified auth: no OTP, no Firebase, no JWT.
+ * User provides their phone number → registered/found → returned their profile.
+ */
 @RestController
 @RequestMapping("/api/auth")
 @RequiredArgsConstructor
+@Slf4j
 public class AuthController {
 
-    private final AuthService authService;
+    private final UserRepository userRepository;
 
     /**
-     * Step 1: Android calls this to signal intent to send OTP.
-     * Actual OTP is sent by Firebase on the Android side.
-     * Backend just validates the phone format and returns OK.
+     * POST /api/auth/login
+     * Body: { "phone": "+919876543210" }
+     * Finds existing user or creates a new one.
+     * Returns the user's id + profile. No tokens.
      */
-    @PostMapping("/send-otp")
-    public ResponseEntity<ApiResponse<Map<String, String>>> sendOtp(
-            @Valid @RequestBody SendOtpRequest request) {
-        // Firebase Phone Auth sends OTP directly to the device.
-        // Backend only needs to acknowledge the request.
-        return ResponseEntity.ok(ApiResponse.ok(
-            "OTP initiated via Firebase. Check your phone.",
-            Map.of("phone", request.getPhone())
-        ));
-    }
+    @PostMapping("/login")
+    public ResponseEntity<ApiResponse<UserResponse>> login(
+            @Valid @RequestBody LoginRequest request) {
 
-    /**
-     * Step 2: After Firebase OTP success, Android sends the Firebase ID token here.
-     * Backend verifies it and issues our own JWT.
-     */
-    @PostMapping("/verify-otp")
-    public ResponseEntity<ApiResponse<AuthResponse>> verifyOtp(
-            @Valid @RequestBody VerifyOtpRequest request) {
-        AuthResponse response = authService.verifyFirebaseToken(request);
-        return ResponseEntity.ok(ApiResponse.ok("Authentication successful", response));
-    }
+        String phone = request.getPhone().replace(" ", "");
 
-    /**
-     * Refresh expired access token using refresh token.
-     */
-    @PostMapping("/refresh")
-    public ResponseEntity<ApiResponse<AuthResponse>> refresh(
-            @RequestBody Map<String, String> body) {
-        String refreshToken = body.get("refreshToken");
-        if (refreshToken == null || refreshToken.isBlank()) {
-            return ResponseEntity.badRequest()
-                    .body(ApiResponse.error("refreshToken is required"));
-        }
-        AuthResponse response = authService.refreshToken(refreshToken);
-        return ResponseEntity.ok(ApiResponse.ok("Token refreshed", response));
+        User user = userRepository.findByPhone(phone)
+                .orElseGet(() -> {
+                    log.info("New user registered: {}", phone);
+                    return userRepository.save(User.builder().phone(phone).build());
+                });
+
+        log.info("User logged in: {} (id={})", phone, user.getId());
+        return ResponseEntity.ok(ApiResponse.ok("Login successful", UserResponse.from(user)));
     }
 }

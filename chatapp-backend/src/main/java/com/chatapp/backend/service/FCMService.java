@@ -15,45 +15,41 @@ import java.util.UUID;
 public class FCMService {
 
     /**
-     * Send push notification to a single user (1-to-1 chat).
+     * Send a collapsed "Tickle" to a single offline device (direct chat).
+     *
+     * Instead of pushing the actual message text, we push a minimal
+     * {"action": "SYNC_REQUIRED", "chatId": "..."} payload.
+     * The collapse_key ensures Firebase replaces any previously queued tickle
+     * for the same chat with this new one — so 500 messages in the same chat
+     * result in exactly ONE queued payload, never overflowing the 100-message limit.
+     *
+     * When the device reconnects, it receives the single tickle and performs
+     * a REST API sync to download all missing messages from the database.
      */
-    public void sendMessageNotification(String fcmToken, UUID chatId,
-                                         String senderName, String senderAvatar,
-                                         String messagePreview, String messageType) {
+    public void sendSyncTickle(String fcmToken, UUID chatId) {
         if (fcmToken == null || fcmToken.isBlank()) return;
 
         try {
             Message message = Message.builder()
                 .setToken(fcmToken)
-                .setNotification(Notification.builder()
-                    .setTitle(senderName)
-                    .setBody(messageType.equals("IMAGE") ? "📷 Photo" : messagePreview)
-                    .build())
-                .putData("type", "MESSAGE")
+                .putData("action", "SYNC_REQUIRED")
                 .putData("chatId", chatId.toString())
-                .putData("senderName", senderName)
-                .putData("senderAvatar", senderAvatar != null ? senderAvatar : "")
-                .putData("messagePreview", messageType.equals("IMAGE") ? "📷 Photo" : messagePreview)
-                .putData("isGroup", "false")
                 .setAndroidConfig(AndroidConfig.builder()
                     .setPriority(AndroidConfig.Priority.HIGH)
-                    .setNotification(AndroidNotification.builder()
-                        .setChannelId("chat_messages")
-                        .setSound("default")
-                        .setClickAction("OPEN_CHAT")
-                        .build())
+                    .setCollapseKey(chatId.toString())   // collapse_key = chatId
                     .build())
                 .build();
 
             String response = FirebaseMessaging.getInstance().send(message);
-            log.debug("FCM sent to {}: {}", senderName, response);
+            log.info("FCM sync tickle sent for chat {}: {}", chatId, response);
         } catch (FirebaseMessagingException e) {
-            log.error("FCM send failed for token {}: {}", fcmToken, e.getMessage());
+            log.error("FCM tickle send failed for chat {}: {}", chatId, e.getMessage());
         }
     }
 
     /**
      * Send push notification to multiple users (group chat).
+     * Group chat still uses the full payload for now.
      * Uses batch send for efficiency.
      */
     public void sendGroupMessageNotification(List<String> fcmTokens, UUID chatId,
@@ -66,10 +62,6 @@ public class FCMService {
             if (token == null || token.isBlank()) continue;
             messages.add(Message.builder()
                 .setToken(token)
-                .setNotification(Notification.builder()
-                    .setTitle(groupName)
-                    .setBody(senderName + ": " + (messageType.equals("IMAGE") ? "📷 Photo" : messagePreview))
-                    .build())
                 .putData("type", "MESSAGE")
                 .putData("chatId", chatId.toString())
                 .putData("senderName", senderName)
@@ -78,11 +70,6 @@ public class FCMService {
                 .putData("groupName", groupName)
                 .setAndroidConfig(AndroidConfig.builder()
                     .setPriority(AndroidConfig.Priority.HIGH)
-                    .setNotification(AndroidNotification.builder()
-                        .setChannelId("chat_messages")
-                        .setSound("default")
-                        .setClickAction("OPEN_CHAT")
-                        .build())
                     .build())
                 .build());
         }

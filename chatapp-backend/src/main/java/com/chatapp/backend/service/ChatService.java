@@ -1,6 +1,7 @@
 package com.chatapp.backend.service;
 
 import com.chatapp.backend.dto.request.SendMessageRequest;
+import com.chatapp.backend.dto.response.ChatResponse;
 import com.chatapp.backend.dto.websocket.MessagePayload;
 import com.chatapp.backend.model.*;
 import com.chatapp.backend.repository.*;
@@ -66,13 +67,18 @@ public class ChatService {
     // ─── Direct Message Delivery ─────────────────────────────────────────────
 
     private void deliverDirect(Chat chat, User sender, Message message, MessagePayload payload) {
-        // Find the other member
+        // Find the recipient
         chatMemberRepository.findByChat(chat).stream()
             .map(ChatMember::getUser)
             .filter(u -> !u.getId().equals(sender.getId()))
             .findFirst()
             .ifPresent(recipient -> {
-                if (presenceService.isOnline(recipient.getId())) {
+                boolean online = presenceService.isOnline(recipient.getId());
+                log.debug("Recipient {} is online={}, fcmToken={}",
+                    recipient.getId(), online,
+                    recipient.getFcmToken() != null ? "present" : "MISSING");
+
+                if (online) {
                     // Deliver via WebSocket
                     messagingTemplate.convertAndSendToUser(
                         recipient.getId().toString(),
@@ -83,23 +89,27 @@ public class ChatService {
                     messageRepository.markAsDelivered(message.getId());
                     payload.setStatus("DELIVERED");
                 } else {
-                    // Push via FCM
-                    fcmService.sendMessageNotification(
-                        recipient.getFcmToken(),
-                        chat.getId(),
-                        sender.getName() != null ? sender.getName() : sender.getPhone(),
-                        sender.getAvatarUrl(),
-                        message.getContent(),
-                        message.getType().name()
-                    );
+                    // Recipient is offline — always push via FCM
+                    String token = recipient.getFcmToken();
+                    String senderName = sender.getName() != null ? sender.getName() : sender.getPhone();
+                    if (token != null && !token.isBlank()) {
+                        log.info("Sending FCM sync tickle to offline user {}", recipient.getId());
+                        fcmService.sendSyncTickle(
+                            token,
+                            chat.getId()
+                        );
+                    } else {
+                        log.warn("Offline user {} has no FCM token — push skipped", recipient.getId());
+                    }
                 }
-                // Echo back to sender's other devices
-                messagingTemplate.convertAndSendToUser(
-                    sender.getId().toString(),
-                    "/queue/messages",
-                    payload
-                );
             });
+
+        // Always echo back to the sender so their UI confirms the message
+        messagingTemplate.convertAndSendToUser(
+            sender.getId().toString(),
+            "/queue/messages",
+            payload
+        );
     }
 
     // ─── Group Message Delivery ──────────────────────────────────────────────
@@ -151,18 +161,45 @@ public class ChatService {
         });
     }
 
+    @Transactional
+    public ChatResponse getOrCreateDirectChatResponse(User user1, User user2) {
+        Chat chat = getOrCreateDirectChat(user1, user2);
+        ChatResponse response = ChatResponse.from(chat);
+        // Compute the other user's info for the calling user (user1)
+        response.setGroupName(user2.getName() != null ? user2.getName() : user2.getPhone());
+        response.setGroupAvatar(user2.getAvatarUrl());
+        return response;
+    }
+
     // ─── Get Chat List ───────────────────────────────────────────────────────
 
-    public List<Chat> getUserChats(User user) {
-        return chatRepository.findAllByMember(user);
+    public List<ChatResponse> getUserChats(User user) {
+        return chatRepository.findAllByMember(user).stream().map(chat -> {
+            ChatResponse response = ChatResponse.from(chat);
+            if (chat.getType() == Chat.ChatType.DIRECT) {
+                // Find the other member to get their name and avatar
+                chatMemberRepository.findByChat(chat).stream()
+                    .map(ChatMember::getUser)
+                    .filter(u -> !u.getId().equals(user.getId()))
+                    .findFirst()
+                    .ifPresent(other -> {
+                        response.setGroupName(other.getName() != null ? other.getName() : other.getPhone());
+                        response.setGroupAvatar(other.getAvatarUrl());
+                    });
+            }
+            return response;
+        }).collect(java.util.stream.Collectors.toList());
     }
 
     // ─── Get Message History (paginated) ─────────────────────────────────────
 
-    public Page<Message> getMessages(UUID chatId, int page, int size) {
+    @Transactional(readOnly = true)
+    public Page<MessagePayload> getMessages(UUID chatId, int page, int size) {
+        Chat chat = chatRepository.findById(chatId)
+            .orElseThrow(() -> new RuntimeException("Chat not found"));
         return messageRepository.findByChatIdOrderByCreatedAtDesc(
             chatId, PageRequest.of(page, size)
-        );
+        ).map(msg -> toPayload(msg, chat));
     }
 
     // ─── Mark Messages as Read ───────────────────────────────────────────────
