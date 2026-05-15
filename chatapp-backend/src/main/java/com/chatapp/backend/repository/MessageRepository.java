@@ -15,11 +15,11 @@ import java.util.UUID;
 public interface MessageRepository extends JpaRepository<Message, UUID> {
 
     // Full paginated history — sorted by seqNumber DESC (newest first, no timestamp ambiguity)
-    @Query("SELECT m FROM Message m WHERE m.chat.id = :chatId ORDER BY m.seqNumber DESC")
+    @Query("SELECT m FROM Message m WHERE m.chat.id = :chatId ORDER BY COALESCE(m.seqNumber, 0) DESC, m.createdAt DESC")
     Page<Message> findByChatIdOrderByCreatedAtDesc(UUID chatId, Pageable pageable);
 
     // WhatsApp-style sync: only fetch messages AFTER a known seqNumber
-    @Query("SELECT m FROM Message m WHERE m.chat.id = :chatId AND m.seqNumber > :afterSeq ORDER BY m.seqNumber DESC")
+    @Query("SELECT m FROM Message m WHERE m.chat.id = :chatId AND COALESCE(m.seqNumber, 0) > :afterSeq ORDER BY COALESCE(m.seqNumber, 0) DESC, m.createdAt DESC")
     Page<Message> findAfterSeq(UUID chatId, Long afterSeq, Pageable pageable);
 
     // Mark all unread messages in a chat as READ for a specific sender's messages
