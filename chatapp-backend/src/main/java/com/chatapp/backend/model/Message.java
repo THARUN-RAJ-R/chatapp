@@ -22,7 +22,7 @@ public class Message {
 
     // Global auto-increment sequence — assigned by PostgreSQL at INSERT time.
     // This is the WhatsApp-style sequence number: strict, never duplicated, never null.
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @org.hibernate.annotations.Generated
     @Column(name = "seq_number", insertable = false, updatable = false)
     private Long seqNumber;
 
