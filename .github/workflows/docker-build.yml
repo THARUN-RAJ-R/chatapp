@@ -33,6 +33,5 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: ./chatapp-backend
-          file: ./chatapp-backend/Dockerfile
           push: true
           tags: tharunrajr/chatapp-backend:latest
