@@ -1,0 +1,22 @@
+# Firebase credentials — NEVER commit this
+firebase-service-account.json
+firebase-service-account.json.json
+
+# Maven build output
+target/
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# Environment
+.env
+.env.local
+
+# Media uploads (generated at runtime)
+media/
+
+# Logs
+*.log
+logs/
