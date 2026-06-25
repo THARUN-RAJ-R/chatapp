@@ -44,8 +44,8 @@ public class FCMService {
             log.info("FCM text message notification sent for chat {}: {}", chatId, response);
         } catch (FirebaseMessagingException e) {
             log.error("FCM text message notification failed for chat {}", chatId, e);
-            log.error("FCM Error - Code: {}, Message: {}, Cause: {}", 
-                e.getCode(), e.getMessage(), e.getCause() != null ? e.getCause().getMessage() : "N/A");
+            log.error("FCM Error - Message: {}, Cause: {}", 
+                e.getMessage(), e.getCause() != null ? e.getCause().getMessage() : "N/A");
         }
     }
 
@@ -90,8 +90,8 @@ public class FCMService {
                 response.getSuccessCount(), messages.size(), chatId);
         } catch (FirebaseMessagingException e) {
             log.error("FCM batch send failed for chat {}", chatId, e);
-            log.error("FCM Error - Code: {}, Message: {}, Cause: {}", 
-                e.getCode(), e.getMessage(), e.getCause() != null ? e.getCause().getMessage() : "N/A");
+            log.error("FCM Error - Message: {}, Cause: {}", 
+                e.getMessage(), e.getCause() != null ? e.getCause().getMessage() : "N/A");
         }
     }
 }
